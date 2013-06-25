@@ -7,76 +7,76 @@
  */
 
 (function () {
-   var raygunProvider = function (window, $) {
+   var raygunProvider = function(window, $, traceKit) {
       // pull local copy of TraceKit to handle stack trace collection
-      var _traceKit = TraceKit.noConflict(),
-          _raygun = window.Raygun,
-          _raygunApiKey,
-          _debugMode = false,
-          _customData = {},
-          $document;
+      var _traceKit = traceKit.noConflict(),
+         _raygun = window.Raygun,
+         _raygunApiKey,
+         _debugMode = false,
+         _customData = { },
+         $document;
 
       if ($) {
          $document = $(document);
       }
 
       var Raygun =
-      {
-         noConflict: function () {
-            window.Raygun = _raygun;
-            return Raygun;
-         },
+         {
+            noConflict: function() {
+               window.Raygun = _raygun;
+               return Raygun;
+            },
 
-         init: function (key, options, customdata) {
-            _raygunApiKey = key;
-            _traceKit.remoteFetching = false;
-            _customData = customdata;
+            init: function(key, options, customdata) {
+               _raygunApiKey = key;
+               _traceKit.remoteFetching = false;
+               _customData = customdata;
 
-            if (options) {
-               if (options.debugMode) {
-                  _debugMode = options.debugMode;
+               if (options) {
+                  if (options.debugMode) {
+                     _debugMode = options.debugMode;
+                  }
                }
-            }
 
-            return Raygun;
-         },
+               return Raygun;
+            },
 
-         withCustomData: function (customdata) {
-            _customData = customdata;
-            return Raygun;
-         },
+            withCustomData: function(customdata) {
+               _customData = customdata;
+               return Raygun;
+            },
 
-         attach: function () {
-            if (!isApiKeyConfigured()) {
-               return;
-            }
-            _traceKit.report.subscribe(processUnhandledException);
-            if ($document) {
-               $document.ajaxError(processJQueryAjaxError);
-            }
-            return Raygun;
-         },
-
-         detach: function () {
-            _traceKit.report.unsubscribe(processUnhandledException);
-            if ($document) {
-               $document.unbind('ajaxError', processJQueryAjaxError);
-            }
-            return Raygun;
-         },
-
-         send: function (ex, customData) {
-            try {
-               _traceKit.report(ex, merge(_customData, customData));
-            }
-            catch (traceKitException) {
-               if (ex !== traceKitException) {
-                  throw traceKitException;
+            attach: function() {
+               if (!isApiKeyConfigured()) {
+                  return;
                }
+               _traceKit.report.subscribe(processUnhandledException);
+               if ($document) {
+                  $document.ajaxError(processJQueryAjaxError);
+               }
+               return Raygun;
+            },
+
+            detach: function() {
+               _traceKit.report.unsubscribe(processUnhandledException);
+               if ($document) {
+                  $document.unbind('ajaxError', processJQueryAjaxError);
+               }
+               return Raygun;
+            },
+
+            send: function(ex, customData) {
+               try {
+                  _traceKit.report(ex, merge(_customData, customData));
+               }
+               catch(traceKitException) {
+                  if (ex !== traceKitException) {
+                     throw traceKitException;
+                  }
+               }
+               return Raygun;
             }
-            return Raygun;
-         }
-      };
+         };
 
       /* internals */
 
@@ -105,9 +105,13 @@
       }
 
       function merge(o1, o2) {
-         var a, o3 = {};
-         for (a in o1) { o3[a] = o1[a]; }
-         for (a in o2) { o3[a] = o2[a]; }
+         var a, o3 = { };
+         for (a in o1) {
+            o3[a] = o1[a];
+         }
+         for (a in o2) {
+            o3[a] = o2[a];
+         }
          return o3;
       }
 
@@ -128,18 +132,18 @@
 
       function getViewPort() {
          var e = document.documentElement,
-         g = document.getElementsByTagName('body')[0],
-         x = window.innerWidth || e.clientWidth || g.clientWidth,
-         y = window.innerHeight || e.clientHeight || g.clientHeight;
+            g = document.getElementsByTagName('body')[0],
+            x = window.innerWidth || e.clientWidth || g.clientWidth,
+            y = window.innerHeight || e.clientHeight || g.clientHeight;
          return { width: x, height: y };
       }
 
       function processUnhandledException(stackTrace, options) {
          var stack = [],
-             qs = {};
+            qs = { };
 
          if (stackTrace.stack && stackTrace.stack.length) {
-            forEach(stackTrace.stack, function (i, frame) {
+            forEach(stackTrace.stack, function(i, frame) {
                stack.push({
                   'LineNumber': frame.line,
                   'ClassName': 'line ' + frame.line + ', column ' + frame.column,
@@ -150,7 +154,7 @@
          }
 
          if (window.location.search && window.location.search.length > 1) {
-            forEach(window.location.search.substring(1).split('&'), function (i, segment) {
+            forEach(window.location.search.substring(1).split('&'), function(i, segment) {
                var parts = segment.split('=');
                if (parts && parts.length === 2) {
                   qs[decodeURIComponent(parts[0])] = parts[1];
@@ -214,6 +218,7 @@
       }
 
       // Create the XHR object.
+
       function createCORSRequest(method, url) {
          var xhr;
 
@@ -221,16 +226,17 @@
          if ("withCredentials" in xhr) {
             // XHR for Chrome/Firefox/Opera/Safari.
             xhr.open(method, url, true);
-         } else if (window.XDomainRequest) {
+         }
+         else if (window.XDomainRequest) {
             // XDomainRequest for IE.
             xhr = new window.XDomainRequest();
             xhr.open(method, url);
          }
 
-         xhr.onload = function () {
+         xhr.onload = function() {
             log('logged error to Raygun');
          };
-         xhr.onerror = function () {
+         xhr.onerror = function() {
             log('failed to log error to Raygun');
          };
 
@@ -238,6 +244,7 @@
       }
 
       // Make the actual CORS request.
+
       function makeCorsRequest(url, data) {
          var xhr = createCORSRequest('POST', url);
          if (!xhr) {
@@ -249,15 +256,15 @@
       }
 
       return Raygun;
-   }
+   };
 
    //check for the define function from require.js and make sure it is amd
    if (typeof define === "function" && define.amd) {
-      define("raygun", ["jQuery"], function (jQuery) {
-         return raygunProvider(window, jQuery);
+      define("raygun", ["jquery", "TraceKit", "raygunTraceKit"], function (jQuery, traceKit) {
+         return raygunProvider(window, jQuery, traceKit);
       });
    }
    else {
-      window.Raygun = raygunProvider(window, window.jQuery);
+      window.Raygun = raygunProvider(window, window.jQuery, window.TraceKit);
    }
 })();
